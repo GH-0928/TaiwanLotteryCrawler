@@ -17,17 +17,28 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Crawler
-        run: pip install taiwanlottery
-
-      - name: Get 539 Data
-        # 強制指定輸出檔名為 daily_539.csv
-        run: taiwanlottery --back 1 --game dailycash --output daily_539.csv
-
-      - name: Commit and Push changes
+      - name: Install dependencies
         run: |
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          git config --local user.name "github-actions[bot]"
-          git add .
-          # 檢查是否有變動才提交，避免因為沒新資料而报错
-          git diff --quiet && git diff --staged --quiet || (git commit -m "自動更新 539 資料" && git push)
+          pip install taiwanlottery
+          # 確保有 pandas 處理資料
+          pip install pandas 
+
+      - name: Fetch 539 Data
+        run: |
+          # 建立一個存放資料的資料夾
+          mkdir -p data
+          # 執行爬蟲並強制存入 data 資料夾
+          taiwanlottery --back 1 --game dailycash --output data/539_history.csv
+
+      - name: Commit and Push
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data/
+          # 只有在檔案有變動時才提交，避免重複報錯
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "自動更新 539 數據"
+            git push
+          else
+            echo "沒有新資料需要更新"
+          fi
